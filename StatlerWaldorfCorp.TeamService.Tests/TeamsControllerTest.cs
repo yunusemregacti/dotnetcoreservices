@@ -138,7 +138,6 @@ namespace StatlerWaldorfCorp.TeamService.Tests
             var result = controller.DeleteTeam(id);
             Assert.True(result is NotFoundResult);
         }
-
     }
 
 }

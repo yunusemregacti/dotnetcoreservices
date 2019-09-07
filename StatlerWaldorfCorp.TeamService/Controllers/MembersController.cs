@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using StatlerWaldorfCorp.TeamService.LocationClient;
 using StatlerWaldorfCorp.TeamService.Models;
 using StatlerWaldorfCorp.TeamService.Persistence;
 
@@ -11,11 +13,13 @@ namespace StatlerWaldorfCorp.TeamService.Controllers
     [Route("/teams/{teamId}/[controller]")]
     public class MembersController : ControllerBase
     {
-        ITeamRepository repository;
+        private ITeamRepository repository;
+        private ILocationClient locationClient;
 
-        public MembersController(ITeamRepository repo)
+        public MembersController(ITeamRepository repository, ILocationClient locationClient)
         {
-            repository = repo;
+            this.repository = repository;
+            this.locationClient = locationClient;
         }
 
         [HttpGet]
@@ -33,10 +37,9 @@ namespace StatlerWaldorfCorp.TeamService.Controllers
             }
         }
 
-
         [HttpGet]
         [Route("/teams/{teamId}/[controller]/{memberId}")]
-        public virtual IActionResult GetMember(Guid teamID, Guid memberId)
+        public async virtual Task<IActionResult> GetMember(Guid teamID, Guid memberId)
         {
             Team team = repository.Get(teamID);
 
@@ -54,8 +57,34 @@ namespace StatlerWaldorfCorp.TeamService.Controllers
                 }
                 else
                 {
-                    return this.Ok(q.First());
+                    Member member = (Member)q.First();
+
+                    return this.Ok(new LocatedMember
+                    {
+                        ID = member.ID,
+                        FirstName = member.FirstName,
+                        LastName = member.LastName,
+                        LastLocation = await this.locationClient.GetLatestForMember(member.ID)
+                    });
                 }
+            }
+        }
+
+        [HttpGet]
+        [Route("/members/{memberId}/team")]
+        public IActionResult GetMemberTeamId(Guid memberId)
+        {
+            Guid result = GetTeamIdForMember(memberId);
+            if (result != Guid.Empty)
+            {
+                return this.Ok(new
+                {
+                    TeamID = result
+                });
+            }
+            else
+            {
+                return this.NotFound();
             }
         }
 
@@ -81,6 +110,7 @@ namespace StatlerWaldorfCorp.TeamService.Controllers
                 {
                     team.Members.Remove(q.First());
                     team.Members.Add(updatedMember);
+                    this.repository.Update(team);
                     return this.Ok();
                 }
             }
@@ -98,26 +128,9 @@ namespace StatlerWaldorfCorp.TeamService.Controllers
             else
             {
                 team.Members.Add(newMember);
+                this.repository.Update(team);
                 var teamMember = new { TeamID = team.ID, MemberID = newMember.ID };
                 return this.Created($"/teams/{teamMember.TeamID}/[controller]/{teamMember.MemberID}", teamMember);
-            }
-        }
-
-        [HttpGet]
-        [Route("/members/{memberId}/team")]
-        public IActionResult GetTeamForMember(Guid memberId)
-        {
-            var teamId = GetTeamIdForMember(memberId);
-            if (teamId != Guid.Empty)
-            {
-                return this.Ok(new
-                {
-                    TeamID = teamId
-                });
-            }
-            else
-            {
-                return this.NotFound();
             }
         }
 
