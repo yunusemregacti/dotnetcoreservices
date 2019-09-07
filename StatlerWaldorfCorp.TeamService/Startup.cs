@@ -20,7 +20,8 @@ namespace StatlerWaldorfCorp.TeamService
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvcCore();
+            services.AddMvcCore().AddJsonFormatters();
+
             services.AddScoped<ITeamRepository, MemoryTeamRepository>();
         }
 
