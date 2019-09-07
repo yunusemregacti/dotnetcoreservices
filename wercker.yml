@@ -52,16 +52,24 @@ build:
         cwd: StatlerWaldorfCorp.TeamService
         code: |
           cp -r . $WERCKER_OUTPUT_DIR/app 
+    - script:
+        name: copy entrypoint
+        code: |
+          cp docker_entrypoint.sh $WERCKER_OUTPUT_DIR/app
+          ls $WERCKER_OUTPUT_DIR/app
+    - script:
+        name: copy config
+        cwd: StatlerWaldorfCorp.TeamService
+        code: |
+          cp appsettings*json $WERCKER_OUTPUT_DIR/app/publish
+          mkdir -p $WERCKER_OUTPUT_DIR/app/publish/app/tmp
 deploy:
   steps:
-    - script:
-        name: enable
-        code : |
-        chmod +x /pipeline/source/app/docker_entrypoint.sh
     - internal/docker-push:
         cwd: $WERCKER_OUTPUT_DIR/app
         username: $USERNAME
         password: $PASSWORD
+        tag: nodb
         repository: yunusemregacti/dotnetcoreservices
         registry: https://registry.hub.docker.com
         entrypoint: "/pipeline/source/app/docker_entrypoint.sh"
